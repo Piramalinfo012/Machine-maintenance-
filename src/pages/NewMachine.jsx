@@ -14,10 +14,10 @@ const NewMachine = () => {
   const navigate = useNavigate();
   
   const SCRIPT_URL =
-    "https://script.google.com/macros/s/AKfycbzudKkY63zbthWP_YcfyF-HnUOObG_XM9aS2JDCmTmcYLaY1OQq7ho6i085BXxu9N2E7Q/exec";
+    "https://script.google.com/macros/s/AKfycbyy1i_4besVBCShOO5Hq3oMDcUW1qjSQE1ObAPdqfbJELl1H6Dpy1Rhq224v5l9onHenw/exec";
   const SHEET_NAME = "FormResponses";
-  const SHEET_Id = "15SBKzTJKzaqhjPI5yt5tKkrd3tzNuhm_Q9-iDO8n0B0";
-  const FOLDER_ID = "1ZMn-mLYxW3_RW4tCgMgesSet6ShgT1kS";
+  const SHEET_Id = "1FsZIcjmw0s0vqLSZS_AsbcYG0bLsY-XVtWVzTLt6zRs";
+  const FOLDER_ID = "1EX8MgePx5WfotOvp70FSa5_Xcu-sxEBL";
 
   const [formValues, setFormValues] = useState({
     serialNumber: "",

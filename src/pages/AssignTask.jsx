@@ -51,13 +51,13 @@ const [imageFile, setImageFile] = useState(null);
 
   // Maintenance script and sheet details
   const SCRIPT_URL =
-    "https://script.google.com/macros/s/AKfycbzudKkY63zbthWP_YcfyF-HnUOObG_XM9aS2JDCmTmcYLaY1OQq7ho6i085BXxu9N2E7Q/exec";
-  const SHEET_Id = "15SBKzTJKzaqhjPI5yt5tKkrd3tzNuhm_Q9-iDO8n0B0";
+    "https://script.google.com/macros/s/AKfycbyy1i_4besVBCShOO5Hq3oMDcUW1qjSQE1ObAPdqfbJELl1H6Dpy1Rhq224v5l9onHenw/exec";
+  const SHEET_Id = "1FsZIcjmw0s0vqLSZS_AsbcYG0bLsY-XVtWVzTLt6zRs";
   const FOLDER_ID = "1ZOuHUXUjONnHb4TBWqztjQcI5Pjvy_n0"; // Added folder ID for repair images
 
   // Repair script and sheet details
-  const REPAIR_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwuV7jpPBbsRCe_6Clke9jfkk32GStqyzaCve0jK1qlPcyfBNW3NG-GB7dE12UiZH7E/exec";
-  const REPAIR_SHEET_ID = "1-j3ydNhMDwa-SfvejOH15ow7ZZ10I1zwdV4acAirHe4";
+  const REPAIR_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyhwtiwuHt7AChxyjQIhC7In30ke5Q247ZAd8DlZx4AfAHrNVetofkf2r4ThSPNJN3eeQ/exec";
+  const REPAIR_SHEET_ID = "1JHpW04BG2MOna3iEEfaMkN3tVFM3s3baAKLLT5iD6BM";
 
 
   // Fetch working days calendar data
@@ -350,7 +350,7 @@ const [imageFile, setImageFile] = useState(null);
   const fetchWorkingDays = async () => {
     try {
       const SCRIPT_URL =
-        "https://script.google.com/macros/s/AKfycbzudKkY63zbthWP_YcfyF-HnUOObG_XM9aS2JDCmTmcYLaY1OQq7ho6i085BXxu9N2E7Q/exec";
+        "https://script.google.com/macros/s/AKfycbyy1i_4besVBCShOO5Hq3oMDcUW1qjSQE1ObAPdqfbJELl1H6Dpy1Rhq224v5l9onHenw/exec";
       const SHEET_NAME = "Working Day Calendar";
 
       const response = await fetch(

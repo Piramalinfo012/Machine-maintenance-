@@ -167,9 +167,9 @@ const TaskDetails = () => {
   // console.log("pendingTasks", pendingTasks);
 
   const SCRIPT_URL =
-    "https://script.google.com/macros/s/AKfycbzudKkY63zbthWP_YcfyF-HnUOObG_XM9aS2JDCmTmcYLaY1OQq7ho6i085BXxu9N2E7Q/exec";
-  const SHEET_ID = "15SBKzTJKzaqhjPI5yt5tKkrd3tzNuhm_Q9-iDO8n0B0";
-  const FOLDER_ID = "1ZhOeYs23CGHCs6REfMGVPgMGG3PQ2jzp";
+    "https://script.google.com/macros/s/AKfycbyy1i_4besVBCShOO5Hq3oMDcUW1qjSQE1ObAPdqfbJELl1H6Dpy1Rhq224v5l9onHenw/exec";
+  const SHEET_ID = "1FsZIcjmw0s0vqLSZS_AsbcYG0bLsY-XVtWVzTLt6zRs";
+  const FOLDER_ID = "1PQMEiAmnPQPWJJEWnPQ2xnedJUp1FRQ2";
 
   const fetchMachineRelatedTasks = async () => {
     setLoading(true);
