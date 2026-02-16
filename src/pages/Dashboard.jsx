@@ -30,7 +30,7 @@ import axios from "axios";
 
 
 const Dashboard = () => {
-  const [sheetDate, setSheetData] = useState([]);
+  const [sheetData, setSheetData] = useState([]);
 
   const SCRIPT_URL =
     "https://script.google.com/macros/s/AKfycbyy1i_4besVBCShOO5Hq3oMDcUW1qjSQE1ObAPdqfbJELl1H6Dpy1Rhq224v5l9onHenw/exec";
@@ -52,12 +52,6 @@ const Dashboard = () => {
     []
   );
 
-  // console.log("sheetData", sheetDate);
-  console.log("repairCompletedTasks", repairCompletedTasks);
-  console.log("maintenanceCompletedTasks", maintenanceCompletedTasks);
-  // console.log("totalMaintenanceTasksCompleted", totalMaintenanceTasksCompleted);
-  // console.log("totalRepairTasksCompleted", totalRepairTasksCompleted);
-
   const fetchSheetData = async () => {
     try {
       setLoaderSheetData(true);
@@ -65,8 +59,6 @@ const Dashboard = () => {
         `${SCRIPT_URL}?sheetId=${SHEET_Id}&sheet=${SHEET_NAME}`
       );
       const result = await res.json();
-
-      // console.log("data", result);
 
       if (result.success && result.table) {
         const headers = result.table.cols.map((col) => col.label); // Extract headers
@@ -106,12 +98,15 @@ const Dashboard = () => {
             `${SCRIPT_URL}?sheetId=${SHEET_Id}&sheet=Maitenance%20Task%20Assign`
           ),
           axios.get(
-            `${SCRIPT_URL}?sheetId=${SHEET_Id}&sheet=Repair%20Task%20Assign`
+            `${SCRIPT_URL}?sheetId=${SHEET_Id}&sheet=Repair%20System`
           ),
         ]);
 
-        const formattedMaintenance = formatSheetData(maintenanceRes.data.table);
-        const formattedRepair = formatSheetData(repairRes.data.table);
+        const maintenanceData = maintenanceRes?.data?.table;
+        const repairData = repairRes?.data?.table;
+
+        const formattedMaintenance = maintenanceData ? formatSheetData(maintenanceData) : [];
+        const formattedRepair = repairData ? formatSheetData(repairData) : [];
 
         // console.log( "formattedRepair", formattedRepair);
 
@@ -177,14 +172,14 @@ const Dashboard = () => {
     // Create a map of machine names to their total maintenance costs
     // Only include tasks where both "Task Start Date" and "Actual Date" are not null
     const maintenanceCostsByMachine = {};
-    
+
     maintenanceCompletedTasks.forEach((task) => {
-      if (task["Serial No"] && 
-          task["Maintenace Cost"] && 
-          task["Task Start Date"] && 
-          task["Actual Date"] &&
-          task["Task Start Date"] !== "" && 
-          task["Actual Date"] !== "") {
+      if (task["Serial No"] &&
+        task["Maintenace Cost"] &&
+        task["Task Start Date"] &&
+        task["Actual Date"] &&
+        task["Task Start Date"] !== "" &&
+        task["Actual Date"] !== "") {
         const machineName = task["Serial No"];
         const maintenanceCost = parseFloat(task["Maintenace Cost"]) || 0;
 
@@ -243,13 +238,9 @@ const Dashboard = () => {
 
   // Initialize an object to store counts for each frequency type
   const frequencyCounts = {
-    "one-time": 0,
-    daily: 0,
-    weekly: 0,
-    monthly: 0,
-    quarterly: 0,
-    "half-yearly": 0,
-    yearly: 0,
+    "one time": 0,
+    critical: 0,
+    urgent: 0,
   };
 
   // Count the occurrences of each frequency in maintenanceCompletedTasks
@@ -300,7 +291,7 @@ const Dashboard = () => {
           <div>
             <p className="text-sm text-gray-500 font-medium">Total Machines</p>
             <h3 className="text-2xl font-bold text-gray-800">
-              {sheetDate?.length}
+              {sheetData?.length}
             </h3>
             {/* <p className="text-xs text-green-600 flex items-center mt-1">
               <ArrowUpCircle size={14} className="mr-1" />

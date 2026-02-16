@@ -14,7 +14,7 @@ function AssignTask() {
 
   const [selectedMachine, setSelectedMachine] = useState("");
   const [filteredSerials, setFilteredSerials] = useState([]);
-const [imageFile, setImageFile] = useState(null);
+  const [imageFile, setImageFile] = useState(null);
   const [startDate, setStartDate] = useState("");
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
@@ -61,7 +61,7 @@ const [imageFile, setImageFile] = useState(null);
 
 
   // Fetch working days calendar data
-  const fetchWorkingDaysCalendar = async () => {
+  const fetchWorkingDays = async () => {
     try {
       const SHEET_NAME = "Working Day Calendar";
       const res = await fetch(
@@ -83,36 +83,43 @@ const [imageFile, setImageFile] = useState(null);
 
         // Filter out empty rows and set working days data
         const validRows = rows.filter((row) => row["Working Dates"]);
-        setWorkingDaysData(validRows);
-
-        // Set endDate to the last working date if available
-        if (validRows.length > 0) {
-          const lastWorkingDate =
-            validRows[validRows.length - 1]["Working Dates"];
-          if (lastWorkingDate) {
-            // Handle different date formats
-            let formattedDate;
-            if (lastWorkingDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
-              // DD/MM/YYYY format
-              const [day, month, year] = lastWorkingDate.split("/");
-              formattedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(
-                2,
-                "0"
-              )}`;
-            } else if (lastWorkingDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
-              // Already in YYYY-MM-DD format
-              formattedDate = lastWorkingDate;
-            }
-
-            if (formattedDate) {
-              setEndDate(formattedDate);
-            }
-          }
-        }
+        return validRows;
       }
+      return [];
     } catch (error) {
       console.error("Failed to fetch working days calendar", error);
       toast.error("Failed to load working days calendar");
+      return [];
+    }
+  };
+
+  const fetchWorkingDaysCalendar = async () => {
+    const validRows = await fetchWorkingDays();
+    setWorkingDaysData(validRows);
+
+    // Set endDate to the last working date if available
+    if (validRows.length > 0) {
+      const lastWorkingDate =
+        validRows[validRows.length - 1]["Working Dates"];
+      if (lastWorkingDate) {
+        // Handle different date formats
+        let formattedDate;
+        if (lastWorkingDate.match(/^\d{2}\/\d{2}\/\d{4}$/)) {
+          // DD/MM/YYYY format
+          const [day, month, year] = lastWorkingDate.split("/");
+          formattedDate = `${year}-${month.padStart(2, "0")}-${day.padStart(
+            2,
+            "0"
+          )}`;
+        } else if (lastWorkingDate.match(/^\d{4}-\d{2}-\d{2}$/)) {
+          // Already in YYYY-MM-DD format
+          formattedDate = lastWorkingDate;
+        }
+
+        if (formattedDate) {
+          setEndDate(formattedDate);
+        }
+      }
     }
   };
 
@@ -240,46 +247,10 @@ const [imageFile, setImageFile] = useState(null);
   }, []);
 
   useEffect(() => {
-    if (startDate && endDate) {
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      const diffInDays = (end - start) / (1000 * 60 * 60 * 24);
-
-      let frequencies = [];
-      if (diffInDays >= 365) {
-        frequencies = [
-          "one-time",
-          "Daily",
-          "Weekly",
-          "Monthly",
-          "Quarterly",
-          "Half Yearly",
-          "Yearly",
-        ];
-      } else if (diffInDays >= 180) {
-        frequencies = [
-          "one-time",
-          "Daily",
-          "Weekly",
-          "Monthly",
-          "Quarterly",
-          "Half Yearly",
-        ];
-      } else if (diffInDays >= 90) {
-        frequencies = ["one-time", "Daily", "Weekly", "Monthly", "Quarterly"];
-      } else if (diffInDays >= 30) {
-        frequencies = ["one-time", "Daily", "Weekly", "Monthly"];
-      } else if (diffInDays >= 7) {
-        frequencies = ["one-time", "Daily", "Weekly"];
-      } else if (diffInDays > 0) {
-        frequencies = ["one-time", "Daily"];
-      }
-
-      setAvailableFrequencies(frequencies);
-    } else {
-      setAvailableFrequencies([]);
-    }
-  }, [startDate, endDate]);
+    // Show simplified frequency options as requested
+    const frequencies = ["One time", "Critical", "Urgent"];
+    setAvailableFrequencies(frequencies);
+  }, []);
 
   // NEW: Function to combine date and time into DD/MM/YYYY HH:MM:SS format
   const formatDateTimeForStorage = (date, time) => {
@@ -347,61 +318,16 @@ const [imageFile, setImageFile] = useState(null);
     return newDate;
   };
 
-  const fetchWorkingDays = async () => {
-    try {
-      const SCRIPT_URL =
-        "https://script.google.com/macros/s/AKfycbyy1i_4besVBCShOO5Hq3oMDcUW1qjSQE1ObAPdqfbJELl1H6Dpy1Rhq224v5l9onHenw/exec";
-      const SHEET_NAME = "Working Day Calendar";
 
-      const response = await fetch(
-        `${SCRIPT_URL}?sheetId=${SHEET_Id}&sheet=${SHEET_NAME}`
-      );
-      if (!response.ok) {
-        throw new Error(`Failed to fetch working days: ${response.status}`);
-      }
-
-      const text = await response.text();
-      const jsonStart = text.indexOf("{");
-      const jsonEnd = text.lastIndexOf("}");
-      const jsonString = text.substring(jsonStart, jsonEnd + 1);
-      const data = JSON.parse(jsonString);
-
-      console.log("Data", data);
-
-      if (!data.table || !data.table.rows) {
-        console.log("No working day data found");
-        return [];
-      }
-
-      // ✅ Extract dates from column A using the formatted value (f)
-      const workingDays = [];
-      data.table.rows.forEach((row) => {
-        if (row.c && row.c[0] && row.c[0].f) {
-          let dateValue = row.c[0].f; // ✅ Use formatted string like "01/04/2025"
-
-          if (
-            typeof dateValue === "string" &&
-            dateValue.match(/^\d{2}\/\d{2}\/\d{4}$/) // DD/MM/YYYY pattern
-          ) {
-            workingDays.push(dateValue);
-          }
-        }
-      });
-
-      console.log(`Fetched ${workingDays.length} working days`);
-      console.log("Sample dates:", workingDays.slice(0, 5)); // optional debug
-      return workingDays;
-    } catch (error) {
-      console.error("Error fetching working days:", error);
-      return []; // Return empty array if fetch fails
-    }
-  };
 
   const generateTasks = async () => {
     // Validate required fields
+    const lowerFreq = (frequency || "").toLowerCase();
+    const isSingleTask = ["one-time", "one time", "critical", "urgent"].includes(lowerFreq);
+
     if (
       !startDate ||
-      !endDate ||
+      (!isSingleTask && !endDate) || // End date is optional for single tasks
       !startTime ||
       (selectedTaskType === "Maintence" ? !frequency : !endTaskDate)
     ) {
@@ -412,10 +338,11 @@ const [imageFile, setImageFile] = useState(null);
     }
 
     const startDateObj = new Date(startDate);
-    const endDateObj = new Date(endDate);
+    // If end date is missing for single task, use start date as effective end date for validation/logic
+    const endDateObj = endDate ? new Date(endDate) : new Date(startDate);
 
-    // Validate date range
-    if (startDateObj > endDateObj) {
+    // Validate date range only for RECURRING tasks
+    if (!isSingleTask && startDateObj > endDateObj) {
       toast.error("End date must be after start date");
       return;
     }
@@ -431,8 +358,8 @@ const [imageFile, setImageFile] = useState(null);
 
     const tasks = [];
 
-    // For one-time tasks
-    if (frequency === "one-time") {
+    // For one-time tasks (One time, Critical, Urgent)
+    if (isSingleTask) {
       const taskDate = findNextWorkingDay(startDateObj, workingDays);
       if (!taskDate) {
         toast.error("No working days found in the selected date range");
@@ -517,17 +444,17 @@ const [imageFile, setImageFile] = useState(null);
     );
   };
 
-const uploadImageToDrive = async (file, taskNo) => {
+  const uploadImageToDrive = async (file, taskNo) => {
     const reader = new FileReader();
-    
+
     return new Promise((resolve, reject) => {
       reader.onload = async () => {
         const base64Data = reader.result.split(',')[1]; // Get base64 data without prefix
-        
+
         try {
           // Use repair script URL for image upload for repair tasks
           const uploadScriptUrl = selectedTaskType === "Repair" ? REPAIR_SCRIPT_URL : SCRIPT_URL;
-          
+
           const response = await fetch(uploadScriptUrl, {
             method: "POST",
             headers: {
@@ -543,7 +470,7 @@ const uploadImageToDrive = async (file, taskNo) => {
           });
 
           const data = await response.json();
-          
+
           if (data.success && data.fileUrl) {
             resolve(data.fileUrl);
           } else {
@@ -565,83 +492,102 @@ const uploadImageToDrive = async (file, taskNo) => {
     });
   };
 
-const handleSubmitForm = async (e) => {
-  e.preventDefault();
+  const handleSubmitForm = async (e) => {
+    e.preventDefault();
 
-  try {
-    setLoaderSubmit(true);
-    
-    // Set the script URL and sheet details based on task type
-    const scriptUrl = selectedTaskType === "Repair" ? REPAIR_SCRIPT_URL : SCRIPT_URL;
-    const sheetId = selectedTaskType === "Repair" ? REPAIR_SHEET_ID : SHEET_Id;
-    const sheetName = selectedTaskType === "Repair" ? "Repair System" : "Maitenance Task Assign";
-    
-    // Prepare payload for Google Apps Script
-    const payload = {
-      action: "insert1",
-      sheetName: sheetName,
-      sheetId: sheetId
-    };
+    try {
+      setLoaderSubmit(true);
 
-    if (selectedTaskType === "Repair") {
-      // First upload image if exists
-      let imageUrl = "";
-      if (imageFile) {
-        // Generate a unique identifier for the image since we're not using Task No
-        const uniqueId = Date.now();
-        imageUrl = await uploadImageToDrive(imageFile, `repair_${uniqueId}`);
-      }
+      // Set the script URL and sheet details based on task type
+      const scriptUrl = selectedTaskType === "Repair" ? REPAIR_SCRIPT_URL : SCRIPT_URL;
+      const sheetId = selectedTaskType === "Repair" ? REPAIR_SHEET_ID : SHEET_Id;
+      const sheetName = selectedTaskType === "Repair" ? "Repair System" : "Maitenance Task Assign";
 
-      // Prepare repair task data without Task No
-      Object.assign(payload, {
-        "Time Stemp": new Date().toLocaleString("en-IN", {
-          timeZone: "Asia/Kolkata",
-        }),
-        "Serial No": selectedSerialNo,
-        "Machine Name": selectedMachine,
-        "Machine Part Name": partName,
-        "Given By": selectedGivenBy,
-        "Doer Name": selectedDoerName,
-        "Problem With Machine": description,
-        "Enable Reminders": enableReminder ? "Yes" : "No",
-        "Require Attachment": requireAttachment ? "Yes" : "No",
-        "Task Start Date": `${startDate} ${startTime}:00`,
-        "Task Ending Date": `${endTaskDate} ${endTime}:00`,
-        "Priority": selectedPriority,
-        "Department": machineArea,
-        "Location": temperature,
-        "Image Link": imageUrl
-      });
-    } else {
-      // Maintenance Task handling (keep existing logic)
-      if (generatedTasks.length === 0) {
-        toast.error("❌ No generated tasks to assign. Please preview first.");
-        return;
-      }
+      // Prepare payload for Google Apps Script
+      const payload = {
+        action: "insert1",
+        sheetName: sheetName,
+        sheetId: sheetId
+      };
 
-      // Get all maintenance tasks and extract the highest number
-      const maintTasks = taskList.filter(task => 
-        task["Task No"] && 
-        typeof task["Task No"] === 'string' && 
-        task["Task No"].startsWith("TM-")
-      );
-      
-      let lastTaskNo = 0;
-      if (maintTasks.length > 0) {
-        const taskNumbers = maintTasks.map(task => {
-          const numPart = task["Task No"].split("TM-")[1];
-          return parseInt(numPart) || 0;
+      if (selectedTaskType === "Repair") {
+        // First upload image if exists
+        let imageUrl = "";
+        if (imageFile) {
+          const uniqueId = Date.now();
+          imageUrl = await uploadImageToDrive(imageFile, `repair_${uniqueId}`);
+        }
+
+        const now = new Date();
+        const timestamp = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}, ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+        // Prepare Repair row as a FLAT ARRAY in the EXACT order expected by the sheet
+        // 0: When, 1: As Needed, 2: What, 3: Serial No, 4: Machine Name...
+        const flatRowData = [
+          timestamp,                // 0: When
+          "",                      // 1: As Needed (Empty as requested)
+          selectedSerialNo,        // 2: Serial No (Instead of "Repair")
+          selectedMachine,         // 3: Machine Name (Column D)
+          partName,                // 4: Machine Part Name (Column E)
+          selectedGivenBy,         // 5: Given By (Column F)
+          selectedDoerName,        // 6: Doer's Name (Column G)
+          description,             // 7: Problem with this machine (Column H)
+          enableReminder ? "Yes" : "No", // 8: Enable reminder (Column I)
+          requireAttachment ? "Yes" : "No", // 9: require Attachment (Column J)
+          formatDateTimeForStorage(startDate, startTime), // 10: Task Start Date & Time (Column K)
+          formatDateTimeForStorage(endTaskDate, endTime), // 11: Task End date & Time (Column L)
+          selectedPriority,        // 12: Priority (Column M)
+          machineArea,             // 13: Department (Column N)
+          temperature,             // 14: Location (Column O)
+          imageUrl || "link not available" // 15: Upload Image (Column P)
+        ];
+
+        const repairPayload = {
+          action: "insert",
+          sheetName: "Repair System",
+          rowData: JSON.stringify(flatRowData)
+        };
+
+        const response = await fetch(scriptUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams(repairPayload).toString(),
         });
-        lastTaskNo = Math.max(...taskNumbers);
-      }
 
-      // Prepare batch insert data for maintenance tasks
-      payload.batchInsert = "true";
-      payload.rowData = JSON.stringify(
-        generatedTasks.map((task, idx) => ({
-          "Time Stemp": new Date().toLocaleString("en-IN", {
-            timeZone: "Asia/Kolkata",
-          }),
+        const result = await response.json();
+        if (!result.success) throw new Error(result.error || "Failed to assign repair task");
+
+      } else {
+        // Maintenance logic using typo sheet name from your setup
+        const sheetName = "Maitenance Task Assign";
+
+        if (generatedTasks.length === 0) {
+          toast.error("❌ No generated tasks to assign. Please preview first.");
+          return;
+        }
+
+        // Get all maintenance tasks and extract the highest number
+        const maintTasks = taskList.filter(task =>
+          task["Task No"] &&
+          typeof task["Task No"] === 'string' &&
+          task["Task No"].startsWith("TM-")
+        );
+
+        let lastTaskNo = 0;
+        if (maintTasks.length > 0) {
+          const taskNumbers = maintTasks.map(task => {
+            const numPart = (task["Task No"] || "").split("TM-")[1];
+            return parseInt(numPart) || 0;
+          });
+          lastTaskNo = Math.max(...taskNumbers, 0);
+        }
+
+        const now = new Date();
+        const timestamp = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()}, ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}:${String(now.getSeconds()).padStart(2, '0')}`;
+
+        const formattedRows = generatedTasks.map((task, idx) => ({
+          "Time Stamp": timestamp,
+          "Time Stemp": timestamp,
           "Task No": `TM-${String(lastTaskNo + idx + 1).padStart(3, "0")}`,
           "Serial No": selectedSerialNo,
           "Machine Name": selectedMachine,
@@ -658,25 +604,28 @@ const handleSubmitForm = async (e) => {
           "Frequency": frequency,
           "Description": description,
           "Priority": selectedPriority,
-        }))
-      );
-    }
+        }));
 
-    // Submit to Google Sheets
-    const response = await fetch(scriptUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body: new URLSearchParams(payload).toString(),
-    });
+        const maintenancePayload = {
+          action: "insert",
+          batchInsert: "true",
+          sheetName: sheetName,
+          rowData: JSON.stringify(formattedRows)
+        };
 
-    const result = await response.json();
-    console.log("Server response:", result);
+        const response = await fetch(scriptUrl, {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams(maintenancePayload).toString(),
+        });
 
-    if (result.success) {
+        const result = await response.json();
+        if (!result.success) throw new Error(result.error || "Failed to batch insert maintenance tasks");
+      }
+
+      // If we reach here, all inserts succeeded
       toast.success("✅ Task assigned successfully!");
-      
+
       // Reset form
       setSelectedSerialNo("");
       setSelectedMachine("");
@@ -700,16 +649,13 @@ const handleSubmitForm = async (e) => {
       setTemperature("");
       setImageFile(null);
       setGeneratedTasks([]);
-    } else {
-      throw new Error(result.error || "Unknown error occurred");
+    } catch (error) {
+      console.error("❌ Submission failed:", error);
+      toast.error(`❌ Failed to assign task: ${error.message}`);
+    } finally {
+      setLoaderSubmit(false);
     }
-  } catch (error) {
-    console.error("❌ Submission failed:", error);
-    toast.error(`❌ Failed to assign task: ${error.message}`);
-  } finally {
-    setLoaderSubmit(false);
-  }
-};
+  };
 
 
   return (
@@ -766,10 +712,7 @@ const handleSubmitForm = async (e) => {
                       >
                         <option value="">Select Machine</option>
                         {loaderMasterSheetData ? (
-                          <option className="flex gap-5 items-center justify-center">
-                            <Loader2Icon className="animate-spin text-red-500" />
-                            <h1>Wait Please...</h1>
-                          </option>
+                          <option disabled>Wait Please...</option>
                         ) : (
                           <>
                             {[
@@ -827,12 +770,7 @@ const handleSubmitForm = async (e) => {
                       >
                         <option value="">Select Given By</option>
                         {loaderMasterSheetData ? (
-                          <>
-                            <option className="flex gap-5 items-center justify-center">
-                              <Loader2Icon className="animate-spin text-red-500" />
-                              <h1>Wait Please...</h1>
-                            </option>
-                          </>
+                          <option disabled>Wait Please...</option>
                         ) : (
                           giveByData.map(
                             (item, index) =>
@@ -860,10 +798,7 @@ const handleSubmitForm = async (e) => {
                       >
                         <option value="">Select Doer Name</option>
                         {loaderMasterSheetData ? (
-                          <option className="flex gap-5 items-center justify-center">
-                            <Loader2Icon className="animate-spin text-red-500" />
-                            <h1>Wait Please...</h1>
-                          </option>
+                          <option disabled>Wait Please...</option>
                         ) : (
                           doerName.map(
                             (item, index) =>
@@ -913,10 +848,7 @@ const handleSubmitForm = async (e) => {
                       >
                         <option value="">Select Task Status</option>
                         {loaderMasterSheetData ? (
-                          <option className="flex gap-5 items-center justify-center">
-                            <Loader2Icon className="animate-spin text-red-500" />
-                            <h1>Wait Please...</h1>
-                          </option>
+                          <option disabled>Wait Please...</option>
                         ) : (
                           taskStatusData.map(
                             (item, index) =>
@@ -998,10 +930,7 @@ const handleSubmitForm = async (e) => {
                       >
                         <option value="">Select Priority</option>
                         {loaderMasterSheetData ? (
-                          <option className="flex gap-5 items-center justify-center">
-                            <Loader2Icon className="animate-spin text-red-500" />
-                            <h1>Wait Please...</h1>
-                          </option>
+                          <option disabled>Wait Please...</option>
                         ) : (
                           priorityData.map(
                             (item, index) =>
@@ -1177,8 +1106,8 @@ const handleSubmitForm = async (e) => {
                       >
                         <div
                           className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${requireAttachment
-                              ? "translate-x-5"
-                              : "translate-x-0"
+                            ? "translate-x-5"
+                            : "translate-x-0"
                             }`}
                         ></div>
                       </div>
@@ -1192,7 +1121,7 @@ const handleSubmitForm = async (e) => {
                     disabled={loaderSubmit}
                     className={`w-full flex items-center justify-center gap-2 bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${loaderSubmit ? "opacity-50 cursor-not-allowed" : ""
                       }`}
-                    >
+                  >
                     {loaderSubmit && (
                       <LoaderIcon className="animate-spin w-4 h-4" />
                     )}
@@ -1227,10 +1156,7 @@ const handleSubmitForm = async (e) => {
                       >
                         <option value="">Select Machine</option>
                         {loaderMasterSheetData ? (
-                          <option className="flex gap-5 items-center justify-center">
-                            <Loader2Icon className="animate-spin text-red-500" />
-                            <h1>Wait Please...</h1>
-                          </option>
+                          <option disabled>Wait Please...</option>
                         ) : (
                           [...new Set(sheetData.map((item) => item["Machine Name"]))]
                             .filter(Boolean)
@@ -1291,10 +1217,7 @@ const handleSubmitForm = async (e) => {
                       >
                         <option value="">Select Given By</option>
                         {loaderMasterSheetData ? (
-                          <option className="flex gap-5 items-center justify-center">
-                            <Loader2Icon className="animate-spin text-red-500" />
-                            <h1>Wait Please...</h1>
-                          </option>
+                          <option disabled>Wait Please...</option>
                         ) : (
                           giveByData.map((item, index) =>
                             item ? (
@@ -1322,10 +1245,7 @@ const handleSubmitForm = async (e) => {
                       >
                         <option value="">Select Doer Name</option>
                         {loaderMasterSheetData ? (
-                          <option className="flex gap-5 items-center justify-center">
-                            <Loader2Icon className="animate-spin text-red-500" />
-                            <h1>Wait Please...</h1>
-                          </option>
+                          <option disabled>Wait Please...</option>
                         ) : (
                           doerName.map((item, index) =>
                             item ? (
@@ -1380,10 +1300,7 @@ const handleSubmitForm = async (e) => {
                       >
                         <option value="">Select Priority</option>
                         {loaderMasterSheetData ? (
-                          <option className="flex gap-5 items-center justify-center">
-                            <Loader2Icon className="animate-spin text-red-500" />
-                            <h1>Wait Please...</h1>
-                          </option>
+                          <option disabled>Wait Please...</option>
                         ) : (
                           priorityData.map((item, index) =>
                             item ? (

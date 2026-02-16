@@ -37,14 +37,14 @@ const Tasks = () => {
     const fetchTasks = async () => {
       setLoadingTasks(true);
       setError(null);
-      
+
       try {
         const [maintenanceRes, repairRes] = await Promise.all([
           axios.get(
             `${SCRIPT_URL}?sheetId=${SHEET_Id}&sheet=Maitenance%20Task%20Assign`
           ),
           axios.get(
-            `${SCRIPT_URL}?sheetId=${SHEET_Id}&sheet=Repair%20Task%20Assign`
+            `${SCRIPT_URL}?sheetId=${SHEET_Id}&sheet=Repair%20System`
           ),
         ]);
 
@@ -90,7 +90,7 @@ const Tasks = () => {
 
   const formatSheetData = (sheetData) => {
     console.log('Processing sheet data:', sheetData);
-    
+
     // Add safety checks
     if (!sheetData || !sheetData.cols || !sheetData.rows) {
       console.warn('Invalid sheet data structure:', sheetData);
@@ -131,7 +131,7 @@ const Tasks = () => {
 
   const filteredTasks = rawTasks.filter((task) => {
     if (!task) return false;
-    
+
     const departmentMatch =
       selectedDepartment === "all" ||
       task["Department"]?.toLowerCase() === selectedDepartment.toLowerCase();
@@ -161,14 +161,14 @@ const Tasks = () => {
 
     tasks.forEach((task) => {
       if (!task) return; // Skip null/undefined tasks
-      
+
       const machineName = task["Machine Name"];
       const serialNo = task["Serial No"];
       const actualDate = task["Actual Date"];
-      
+
       // Skip tasks without essential data
       if (!machineName || !serialNo) return;
-      
+
       // Create unique key combining machine name and serial number
       const uniqueKey = `${machineName}|${serialNo}`;
 
@@ -251,11 +251,10 @@ const Tasks = () => {
 
       <div className="flex space-x-4 mb-4">
         <button
-          className={`px-4 py-2 rounded-md ${
-            activeTab === "maintenance"
+          className={`px-4 py-2 rounded-md ${activeTab === "maintenance"
               ? "bg-indigo-600 text-white"
               : "bg-gray-200 text-gray-700"
-          }`}
+            }`}
           onClick={() => setActiveTab("maintenance")}
         >
           Maintenance ({maintenanceTasks.length})

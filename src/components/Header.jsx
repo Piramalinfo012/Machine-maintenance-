@@ -26,8 +26,8 @@ const Header = ({ children }) => {
         </div>
         <div className="flex items-center space-x-4">
           <div className="relative">
-            <Bell size={20} className="text-gray-500 cursor-pointer hover:text-indigo-600" />
-            <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span>
+            {/* <Bell size={20} className="text-gray-500 cursor-pointer hover:text-indigo-600" /> */}
+            {/* <span className="absolute top-0 right-0 h-2 w-2 rounded-full bg-red-500"></span> */}
           </div>
           <div className="flex items-center space-x-2 cursor-pointer">
             <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center">

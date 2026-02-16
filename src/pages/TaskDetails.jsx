@@ -163,20 +163,20 @@ const TaskDetails = () => {
   const [soundStatuses, setSoundStatuses] = useState({});
   const [temperatures, setTemperatures] = useState({});
   const [taskProgress, setTaskProgress] = useState(0);
+  const [sheetHeaders, setSheetHeaders] = useState([]);
 
   // console.log("pendingTasks", pendingTasks);
 
-  const SCRIPT_URL =
-    "https://script.google.com/macros/s/AKfycbyy1i_4besVBCShOO5Hq3oMDcUW1qjSQE1ObAPdqfbJELl1H6Dpy1Rhq224v5l9onHenw/exec";
-  const SHEET_ID = "1FsZIcjmw0s0vqLSZS_AsbcYG0bLsY-XVtWVzTLt6zRs";
-  const FOLDER_ID = "1PQMEiAmnPQPWJJEWnPQ2xnedJUp1FRQ2";
+  const SCRIPT_URL = import.meta.env.VITE_DATA_FETCH_SCRIPT_URL;
+  const SHEET_ID = import.meta.env.VITE_DATA_SHEET_ID;
+  const FOLDER_ID = import.meta.env.VITE_IMAGE_NEW_MACHINE;
 
   const fetchMachineRelatedTasks = async () => {
     setLoading(true);
     try {
       const sheetName = taskNo.startsWith("TM")
         ? "Maitenance Task Assign"
-        : "Repair Task Assign";
+        : "Repair System";
 
       const res = await axios.get(
         `${SCRIPT_URL}?sheetId=${SHEET_ID}&sheet=${encodeURIComponent(
@@ -187,13 +187,15 @@ const TaskDetails = () => {
       const columns = res.data.table.cols.map((col) => col.label);
       const rows = res.data.table.rows;
 
-      const formattedData = rows.map((row) => {
+      const formattedData = rows.map((row, index) => {
         const obj = {};
         row.c.forEach((cell, i) => {
           obj[columns[i]] = cell?.v || "";
         });
+        obj.rowIndex = index + 2; // Data starts at row 2
         return obj;
       });
+      setSheetHeaders(columns);
 
       // console.log("formattedData", formattedData);
 
@@ -450,49 +452,50 @@ const TaskDetails = () => {
         fileType = fileName.split(".").pop().toLowerCase(); // Get file extension
       }
 
-      const payload =
+      const updateData =
         taskType === "Maintence"
           ? {
-              sheetId: SHEET_ID,
-              sheetName: taskNo.startsWith("TM")
-                ? "Maitenance Task Assign"
-                : "Repair Task Assign",
-              action: "update",
-              taskNo: taskNo,
-              "Task Status": taskStatuses[taskNo],
-              Remarks: remarks[taskNo] || "",
-              "Maintenace Cost": repairCosts[taskNo] || "",
-              "Sound Status": soundStatuses[taskNo] || "",
-              "Temperature Status": temperatures[taskNo] || "",
-              ...(imgRes && {
-                "Image Link": imgRes,
-                "File Name": fileName,
-                "File Type": fileType,
-              }),
-            }
+            "Task Status": taskStatuses[taskNo],
+            Remarks: remarks[taskNo] || "",
+            "Maintenace Cost": repairCosts[taskNo] || "",
+            "Sound Status": soundStatuses[taskNo] || "",
+            "Temperature Status": temperatures[taskNo] || "",
+            ...(imgRes && {
+              "Image Link": imgRes,
+              "File Name": fileName,
+              "File Type": fileType,
+            }),
+          }
           : {
-              sheetId: SHEET_ID,
-              sheetName: taskNo.startsWith("TM")
-                ? "Maitenance Task Assign"
-                : "Repair Task Assign",
-              action: "update",
-              taskNo: taskNo,
-              "Task Status": taskStatuses[taskNo],
-              Remarks: remarks[taskNo] || "",
-              "Repair Cost": repairCosts[taskNo] || "",
-              "Sound Status": soundStatuses[taskNo] || "",
-              "Temperature Status": temperatures[taskNo] || "",
-              ...(imgRes && {
-                "Image Link": imgRes,
-                "File Name": fileName,
-                "File Type": fileType,
-              }),
-            };
+            "Task Status": taskStatuses[taskNo],
+            Remarks: remarks[taskNo] || "",
+            "Repair Cost": repairCosts[taskNo] || "",
+            "Sound Status": soundStatuses[taskNo] || "",
+            "Temperature Status": temperatures[taskNo] || "",
+            ...(imgRes && {
+              "Image Link": imgRes,
+              "File Name": fileName,
+              "File Type": fileType,
+            }),
+          };
 
       // Only add Actual Date if status is "Yes"
       if (taskStatuses[taskNo] === "Yes") {
-        payload["Actual Date"] = new Date().toISOString().split("T")[0];
+        updateData["Actual Date"] = new Date().toISOString().split("T")[0];
       }
+
+      // Map to array based on headers for the new specialized backend
+      const rowDataArray = sheetHeaders.map(header => updateData[header] !== undefined ? updateData[header] : "");
+
+      const payload = {
+        action: "update",
+        sheetId: SHEET_ID,
+        sheetName: taskNo.startsWith("TM")
+          ? "Maitenance Task Assign"
+          : "Repair System",
+        taskNo: taskNo, // CRITICAL: This was missing
+        ...updateData,  // Flattening individual fields (e.g., "Task Status", "Remarks")
+      };
 
       // Send the update request
       const response = await axios.post(SCRIPT_URL, payload, {
@@ -507,13 +510,13 @@ const TaskDetails = () => {
         toast.success("Task updated successfully");
 
         // if (taskStatuses[taskNo] === "Yes") {
-          // If task is marked as completed, remove it from active tasks
-          // setAllRelatedTasks((prev) =>
-          //   prev.filter((t) => t["Task No"] !== taskNo)
-          // );
-          // setPendingTasks((prev) =>
-          //   prev.filter((t) => t["Task No"] !== taskNo)
-          // );
+        // If task is marked as completed, remove it from active tasks
+        // setAllRelatedTasks((prev) =>
+        //   prev.filter((t) => t["Task No"] !== taskNo)
+        // );
+        // setPendingTasks((prev) =>
+        //   prev.filter((t) => t["Task No"] !== taskNo)
+        // );
         // }
         fetchMachineRelatedTasks();
 
@@ -778,44 +781,40 @@ const TaskDetails = () => {
         <div className="border-b border-gray-200">
           <nav className="flex -mb-px">
             <button
-              className={`py-4 px-6 font-medium text-sm border-b-2 ${
-                activeTab === "details"
-                  ? "border-indigo-500 text-indigo-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
+              className={`py-4 px-6 font-medium text-sm border-b-2 ${activeTab === "details"
+                ? "border-indigo-500 text-indigo-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
               onClick={() => setActiveTab("details")}
             >
               <FileText size={16} className="inline mr-2" />
               Description
             </button>
             <button
-              className={`py-4 px-6 font-medium text-sm border-b-2 ${
-                activeTab === "checklist"
-                  ? "border-indigo-500 text-indigo-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
+              className={`py-4 px-6 font-medium text-sm border-b-2 ${activeTab === "checklist"
+                ? "border-indigo-500 text-indigo-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
               onClick={() => setActiveTab("checklist")}
             >
               <CheckCircle size={16} className="inline mr-2" />
               Checklist
             </button>
             <button
-              className={`py-4 px-6 font-medium text-sm border-b-2 ${
-                activeTab === "history"
-                  ? "border-indigo-500 text-indigo-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
+              className={`py-4 px-6 font-medium text-sm border-b-2 ${activeTab === "history"
+                ? "border-indigo-500 text-indigo-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
               onClick={() => setActiveTab("history")}
             >
               <Clock size={16} className="inline mr-2" />
               History
             </button>
             <button
-              className={`py-4 px-6 font-medium text-sm border-b-2 ${
-                activeTab === "documents"
-                  ? "border-indigo-500 text-indigo-600"
-                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-              }`}
+              className={`py-4 px-6 font-medium text-sm border-b-2 ${activeTab === "documents"
+                ? "border-indigo-500 text-indigo-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                }`}
               onClick={() => setActiveTab("documents")}
             >
               <Paperclip size={16} className="inline mr-2" />
@@ -949,11 +948,10 @@ const TaskDetails = () => {
                         return (
                           <tr
                             key={taskNo}
-                            className={`${
-                              isDone
-                                ? "bg-green-50 border-green-200 text-gray-500 line-through"
-                                : "bg-white border-gray-200 text-gray-900"
-                            }`}
+                            className={`${isDone
+                              ? "bg-green-50 border-green-200 text-gray-500 line-through"
+                              : "bg-white border-gray-200 text-gray-900"
+                              }`}
                           >
                             <td className="border px-2 py-1 text-center">
                               <input
@@ -988,14 +986,12 @@ const TaskDetails = () => {
 
                             <td className="border px-2 py-1 text-center">
                               <label
-                                className={`cursor-pointer ${
-                                  !isChecked || isDone
-                                    ? "text-gray-400"
-                                    : "text-blue-600 hover:underline"
-                                } ${
-                                  task["Require Attachment"] === "Yes" &&
+                                className={`cursor-pointer ${!isChecked || isDone
+                                  ? "text-gray-400"
+                                  : "text-blue-600 hover:underline"
+                                  } ${task["Require Attachment"] === "Yes" &&
                                   "text-red-600"
-                                }`}
+                                  }`}
                               >
                                 Upload
                                 <input
@@ -1082,13 +1078,12 @@ const TaskDetails = () => {
 
                             <td className="border px-2 py-1 text-center">
                               <button
-                                className={`px-2 py-1 rounded ${
-                                  canSubmit &&
+                                className={`px-2 py-1 rounded ${canSubmit &&
                                   (task["Require Attachment"] !== "Yes" ||
                                     imageFiles[taskNo])
-                                    ? "bg-indigo-600 text-white hover:bg-indigo-700"
-                                    : "bg-gray-300 text-gray-500 cursor-not-allowed"
-                                }`}
+                                  ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                                  : "bg-gray-300 text-gray-500 cursor-not-allowed"
+                                  }`}
                                 disabled={
                                   !canSubmit ||
                                   isDone ||
@@ -1236,14 +1231,18 @@ const TaskDetails = () => {
                               ).toLocaleDateString()}
                             </td>
                             <td className="px-6 py-3 whitespace-nowrap text-right text-sm font-medium">
-                              <a
-                                href={task["Image Link"]}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-indigo-600 hover:text-indigo-900"
-                              >
-                                Download
-                              </a>
+                              {task["Image Link"] ? (
+                                <a
+                                  href={task["Image Link"]}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-indigo-600 hover:text-indigo-900"
+                                >
+                                  Download
+                                </a>
+                              ) : (
+                                <span className="text-gray-400">No Image</span>
+                              )}
                             </td>
                           </tr>
                         );
@@ -1253,10 +1252,10 @@ const TaskDetails = () => {
 
                   {completedTasks.filter((task) => task["Image Link"])
                     .length === 0 && (
-                    <div className="text-center py-8 text-gray-500">
-                      No documents attached to this task.
-                    </div>
-                  )}
+                      <div className="text-center py-8 text-gray-500">
+                        No documents attached to this task.
+                      </div>
+                    )}
                 </div>
               )}
             </div>
